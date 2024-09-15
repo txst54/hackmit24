@@ -6,8 +6,8 @@ from dotenv import load_dotenv
 import os
 
 SCOPES = [
+    "https://www.googleapis.com/auth/calendar",
     "https://www.googleapis.com/auth/gmail.readonly",
-    "https://www.googleapis.com/auth/calendar.events",
 ]
 
 load_dotenv()
@@ -25,9 +25,15 @@ def google_auth():
             creds.refresh(Request())
         else:
             flow = InstalledAppFlow.from_client_secrets_file("creds.json", SCOPES)
-            creds = flow.run_local_server(port=0)
+            creds = flow.run_local_server(port=8000)
         # Save the credentials for the next run
         with open("token.json", "w") as token:
             token.write(creds.to_json())
 
-    return build("gmail", "v1", credentials=creds)
+    gmail_service = build("gmail", "v1", credentials=creds)
+    calendar_service = build("calendar", "v3", credentials=creds)
+    return gmail_service, calendar_service
+
+if __name__ == "__main__":
+    google_auth()
+    print("Google Auth successful!")  # For testing purposes
