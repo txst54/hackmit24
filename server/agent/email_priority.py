@@ -11,7 +11,7 @@ load_dotenv()
 # python -m spacy download en_core_web_sm
 
 # Load the spaCy English model
-nlp = spacy.load("en_core_web_sm")
+nlp = spacy.load("./en_core_web_sm-3.7.1/en_core_web_sm/en_core_web_sm-3.7.1")
 
 
 def prioritize_emails_to_todoist(emails: List[dict]) -> str:
