@@ -12,7 +12,7 @@ from email_priority import prioritize_emails_to_todoist
 from controls.codeagents import (
     read_pull,
     post_comment_to_pr,
-    find_commit_sha_by_code_segment
+    find_commit_sha_by_code_segment,
 )
 from controls.docvision import (
     encode_images,
@@ -22,9 +22,8 @@ from controls.docvision import (
     match_boxes,
     place_answers_on_image,
 )
-from pydantic import FilePath, field_validator, BeforeValidator
-from PIL import Image
-from pydantic import BaseModel
+from cal import schedule_meeting
+from llama_index.core import set_global_handler
 
 todos = []
 
@@ -98,7 +97,7 @@ def fill_pdf(pdf_name: str, data: Dict[str, str]) -> str:
 def open_pdf(pdf_name: str) -> str:
     """opens pdf file using system default pdf reader"""
     subprocess.run(["open", pdf_name])
-    return "file opened"
+    return "file opened. Done processing the pdf."
 
 
 def add_todo(todo: str) -> str:
@@ -185,11 +184,14 @@ images_to_pdf_function = FunctionTool.from_defaults(fn=images_to_pdf)
 get_fields_from_image_function = FunctionTool.from_defaults(fn=get_fields_from_image)
 fill_pdf_via_image_function = FunctionTool.from_defaults(fn=fill_pdf_via_image)
 read_pull_function = FunctionTool.from_defaults(fn=read_pull)
-find_commit_sha_by_code_segment_function = FunctionTool.from_defaults(fn=find_commit_sha_by_code_segment)
+find_commit_sha_by_code_segment_function = FunctionTool.from_defaults(
+    fn=find_commit_sha_by_code_segment
+)
 post_comment_to_pr_function = FunctionTool.from_defaults(fn=post_comment_to_pr)
 prioritize_emails_to_todoist_function = FunctionTool.from_defaults(
     fn=prioritize_emails_to_todoist
 )
+schedule_meeting_function = FunctionTool.from_defaults(fn=schedule_meeting)
 
 # initialize llm
 llm = OpenAI(model="gpt-4o")
@@ -207,10 +209,12 @@ agent = ReActAgent.from_tools(
         fill_pdf_via_image_function,
         read_pull_function,
         post_comment_to_pr_function,
-        find_commit_sha_by_code_segment_function
+        find_commit_sha_by_code_segment_function,
+        schedule_meeting_function,
     ],
     llm=llm,
     verbose=True,
+    max_iterations=10,
 )
 
 if __name__ == "__main__":
@@ -228,33 +232,14 @@ if __name__ == "__main__":
             Based on the email above, do one of the following tasks:
             1. Download the attachment, fill out the pdf with appropriate function (if there's not fields use image reltated functions), and open the edited version.Be careful some forms have the year as 4 fields instead of 1. put each digit in each field.
             2. Add the email as a dictionary to the todo list. dictionary should have the following keys: subject, sender, snippet, due_date. include all the data from original email. summarize the body.
-            3. Review the pull-request and suggest any changes to make before merging. Write code suggestions to github as a comment.
+            3. Schedule a meeting with the sender of the email if the email has timeslots instead of todo tasks.
+            4. Review the pull-request and suggest any changes to make before merging. Write code suggestions to github as a comment.
+            
         """
         )
     # prioritize_emails_to_todoist(todos)
-    data = {
-        "IDENTIFICATION NUMBER": "1HGCM82633A123456",
-        "YEAR MODEL": "2015",
-        "MAKE": "Toyota",
-        "LICENSE PLATE#/#": "ABC1234",
-        "MOTORCYCLE ENGINE#": "",
-        "PRINT SELLER'S NAME(S)": "John Doe",
-        "MD": "09",
-        "DAY": "14",
-        "YR": "2024",
-        "SELLING PRICE": "$15,000",
-        "GIFT VALUE": "",
-        "PRINT NAME": "John Doe",
-        "SIGNATURE": "John Doe",
-        "DATE": "09/14/2024",
-        "DL. or DEALER#": "D1234567",
-        "MAILING ADDRESS": "123 Main St",
-        "CITY": "San Francisco",
-        "STATE": "CA",
-        "ZIP": "94105",
-        "DAYTIME PHONE#": "(310) 555-1234",
-        "BUYER PRINT NAME": "Jane Smith",
-    }
+    if len(todos) != 0:
+        prioritize_emails_to_todoist(todos)
     # find_commit_sha_by_code_segment("Texas-Capital-Collective", "tcc-golf", "11", "-    <div class=\"w-10/12 lg:pb-16\">")
     # post_comment_to_pr("https://github.com/Texas-Capital-Collective/tcc-golf/pull/11", "Testing new TCC Dev Tool :)")
     # read_pull("https://github.com/Texas-Capital-Collective/tcc-golf/pull/11")
