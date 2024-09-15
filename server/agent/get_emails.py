@@ -113,13 +113,10 @@ def run_email():
     if not messages:
         print("No messages found.")
     else:
-        print("Messages:")
+        # print("Messages:")
         data = []
         for message in messages:
             email_data = get_email_content(gmail_service, user_id, message["id"])
             if email_data:
                 data.append(email_data)
     return data
-
-
-print(run_email())

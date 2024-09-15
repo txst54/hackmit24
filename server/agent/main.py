@@ -23,7 +23,14 @@ from controls.docvision import (
     place_answers_on_image,
 )
 from cal import schedule_meeting
-from llama_index.core import set_global_handler
+import llama_index.core
+import os
+
+PHOENIX_API_KEY = "a77688ad1327d14a0b3:9f469be"
+os.environ["OTEL_EXPORTER_OTLP_HEADERS"] = f"api_key={PHOENIX_API_KEY}"
+llama_index.core.set_global_handler(
+    "arize_phoenix", endpoint="https://llamatrace.com/v1/traces"
+)
 
 todos = []
 
@@ -78,7 +85,6 @@ def fill_pdf(pdf_name: str, data: Dict[str, str]) -> str:
 
     writer.append(reader)
 
-    print("DATA:", data)
     for field in fields:
         try:
             writer.update_page_form_field_values(
@@ -89,15 +95,16 @@ def fill_pdf(pdf_name: str, data: Dict[str, str]) -> str:
         except Exception:
             continue
 
-    with open("output.pdf", "wb") as output_file:
+    with open("fillable.pdf", "wb") as output_file:
         writer.write(output_file)
-    return "pdf filled and saved to output.pdf"
+    return "pdf filled and saved to fillable.pdf"
 
 
-def open_pdf(pdf_name: str) -> str:
+def open_pdf(pdf_name: str) -> bool:
     """opens pdf file using system default pdf reader"""
-    subprocess.run(["open", pdf_name])
-    return "file opened. Done processing the pdf."
+    # subprocess.run(["open", pdf_name], shell=True)
+    os.system(f"open {pdf_name}")
+    return True
 
 
 def add_todo(todo: str) -> str:
@@ -144,7 +151,6 @@ def get_fields_from_image(pdf_name: str) -> List[str]:
 
 def fill_pdf_via_image(pdf_name: str, data: Dict[str, str]) -> str:
     """Fills out a pdf composing of images with the given data in the form of a dictionary of field names and values"""
-    print("Data: ", data)
     img_obj = load_pdf_to_image(pdf_name)
     images = img_obj["images"]
     fields = get_fields_from_image(pdf_name)
@@ -171,8 +177,8 @@ def fill_pdf_via_image(pdf_name: str, data: Dict[str, str]) -> str:
         new_page = place_answers_on_image(page, answers, coords)
         print("Appending...")
         page_list.append(new_page)
-    images_to_pdf(page_list, "output.pdf")
-    return "success, written to output.pdf"
+    images_to_pdf(page_list, "non_fillable.pdf")
+    return "success, written to non_fillable.pdf"
 
 
 get_fields_function = FunctionTool.from_defaults(fn=get_fields)
@@ -230,10 +236,10 @@ if __name__ == "__main__":
             email sender: {email['sender']}
             email subject: {email['subject']}
             Based on the email above, do one of the following tasks:
-            1. Download the attachment, fill out the pdf with appropriate function (if there's not fields use image reltated functions), and open the edited version.Be careful some forms have the year as 4 fields instead of 1. put each digit in each field.
-            2. Add the email as a dictionary to the todo list. dictionary should have the following keys: subject, sender, snippet, due_date. include all the data from original email. summarize the body.
+            1. Download the attachment, fill out the pdf with appropriate function (if there's not fields use image reltated functions).Be careful some forms have the year as 4 fields instead of 1. put each digit in each field.
+            2. Add the email as a dictionary to the todo list. dictionary should have the following keys: subject, sender, snippet, due_date. include all the data from original email. summarize the body. sender should have name and email.
             3. Schedule a meeting with the sender of the email if the email has timeslots instead of todo tasks.
-            4. Review the pull-request and suggest any changes to make before merging. Write code suggestions to github as a comment.
+            4. Review the pull-request and suggest any changes to make before merging. Write code suggestions to github as a comment.Make sure to open the root url of the pull request.
             
         """
         )

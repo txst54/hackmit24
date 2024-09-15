@@ -16,7 +16,6 @@ nlp = spacy.load("./en_core_web_sm-3.7.1/en_core_web_sm/en_core_web_sm-3.7.1")
 
 def prioritize_emails_to_todoist(emails: List[dict]) -> str:
 
-    print("EMAILSSSSSSSSSSSSSSSSS", emails)
     # Initialize Todoist client
     api = TodoistAPI(os.environ["TODOIST_API_TOKEN"])
 
@@ -39,10 +38,13 @@ def prioritize_emails_to_todoist(emails: List[dict]) -> str:
         # Determine priority based on sentiment, entities, and keywords
         priority = determine_priority(sentiment, entities, content)
 
-        # Create a task with the email content
-        task_content = f"[{email['sender']['name']}] {subject}"
-        task_description = f"From: {email['sender']['email']}\n\n{snippet}"
-        due_date = email["due_date"]
+        try:
+            # Create a task with the email content
+            task_content = f"[{email['sender']['name']}] {subject}"
+            task_description = f"From: {email['sender']['email']}\n\n{snippet}"
+            due_date = email["due_date"]
+        except Exception as e:
+            return "Error in email data format"
 
         # Map our priority to Todoist priority (4 is highest, 1 is lowest)
         todoist_priority = 4 if priority == "high" else 3 if priority == "medium" else 2
