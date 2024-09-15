@@ -5,6 +5,45 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import { ClerkProvider } from '@clerk/clerk-react';
+import App from './App';
+
+const clerkFrontendApi = 'your-frontend-api-key';
+
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <React.StrictMode>
+    <ClerkProvider frontendApi={clerkFrontendApi}>
+      <App />
+    </ClerkProvider>
+  </React.StrictMode>
+);
+
+import React from 'react';
+import { SignedIn, SignedOut, SignIn, UserButton } from '@clerk/clerk-react';
+
+function App() {
+  return (
+    <div>
+      {/* When the user is signed in */}
+      <SignedIn>
+        <h1>Welcome to the Dashboard</h1>
+        <UserButton />
+      </SignedIn>
+
+      {/* When the user is signed out */}
+      <SignedOut>
+        <h1>Please Sign In</h1>
+        <SignIn />
+      </SignedOut>
+    </div>
+  );
+}
+
+export default App;
+
+
 const emails = [
   { 
     id: 1, 
