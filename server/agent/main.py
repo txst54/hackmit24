@@ -182,7 +182,6 @@ fill_pdf_function = FunctionTool.from_defaults(fn=fill_pdf)
 open_pdf_function = FunctionTool.from_defaults(fn=open_pdf)
 add_todo_function = FunctionTool.from_defaults(fn=add_todo)
 images_to_pdf_function = FunctionTool.from_defaults(fn=images_to_pdf)
-load_pdf_to_image_function = FunctionTool.from_defaults(fn=load_pdf_to_image)
 get_fields_from_image_function = FunctionTool.from_defaults(fn=get_fields_from_image)
 fill_pdf_via_image_function = FunctionTool.from_defaults(fn=fill_pdf_via_image)
 read_pull_function = FunctionTool.from_defaults(fn=read_pull)
@@ -204,7 +203,6 @@ agent = ReActAgent.from_tools(
         open_pdf_function,
         add_todo_function,
         images_to_pdf_function,
-        load_pdf_to_image_function,
         get_fields_from_image_function,
         fill_pdf_via_image_function,
         read_pull_function,
