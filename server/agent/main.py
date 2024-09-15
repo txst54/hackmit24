@@ -22,8 +22,27 @@ from controls.docvision import (
     match_boxes,
     place_answers_on_image,
 )
+from fastapi import FastAPI
+from fastapi import WebSocket
+from fastapi import WebSocketDisconnect
 from cal import schedule_meeting
 from llama_index.core import set_global_handler
+import sys
+import asyncio
+from contextlib import redirect_stdout
+from io import StringIO
+
+# Function to capture output in real-time
+class CapturingOutput(StringIO):
+    def __init__(self, websocket=None):
+        super().__init__()
+        self.websocket = websocket
+
+    def write(self, s):
+        super().write(s)
+        # Send output to WebSocket in real-time
+        if self.websocket:
+            asyncio.create_task(self.websocket.send_text(s.strip()))
 
 todos = []
 
@@ -217,30 +236,53 @@ agent = ReActAgent.from_tools(
     max_iterations=10,
 )
 
-if __name__ == "__main__":
-    emails = run_email()
-    # print([email["attachments"] for email in emails])
+app = FastAPI()
+
+# Store connected clients in a list
+clients = []
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    clients.append(websocket)
+    try:
+        emails = run_email()
+
+        # Start the email processing with WebSocket logging
+        await process_emails(agent, emails, websocket)
+        if len(todos) != 0:
+            prioritize_emails_to_todoist(todos)
+    except WebSocketDisconnect:
+        clients.remove(websocket)
+        print("Client disconnected")
+
+
+# Function to broadcast logs to all connected WebSocket clients
+async def broadcast_log(log_message: str):
+    for client in clients:
+        await client.send_text(log_message)
+
+
+async def process_emails(agent, emails, websocket):
     for email in emails:
-        agent.chat(
-            # "create a dictionary of fields and values based on pdf file called easy-pdf.pdf and given data. use that dictionary to fill out the pdf file"
-            # "fill out the pdf called easy-pdf.pdf and open the edited version. Be careful some forms have the year as 4 fields instead of 1. put each digit in each field."
-            f"""
-            email body: {email['content']}
-            email attachements: {email['attachments']}
-            email sender: {email['sender']}
-            email subject: {email['subject']}
-            Based on the email above, do one of the following tasks:
-            1. Download the attachment, fill out the pdf with appropriate function (if there's not fields use image reltated functions), and open the edited version.Be careful some forms have the year as 4 fields instead of 1. put each digit in each field.
-            2. Add the email as a dictionary to the todo list. dictionary should have the following keys: subject, sender, snippet, due_date. include all the data from original email. summarize the body.
-            3. Schedule a meeting with the sender of the email if the email has timeslots instead of todo tasks.
-            4. Review the pull-request and suggest any changes to make before merging. Write code suggestions to github as a comment.
-            
-        """
-        )
-    # prioritize_emails_to_todoist(todos)
-    if len(todos) != 0:
-        prioritize_emails_to_todoist(todos)
-    # find_commit_sha_by_code_segment("Texas-Capital-Collective", "tcc-golf", "11", "-    <div class=\"w-10/12 lg:pb-16\">")
-    # post_comment_to_pr("https://github.com/Texas-Capital-Collective/tcc-golf/pull/11", "Testing new TCC Dev Tool :)")
-    # read_pull("https://github.com/Texas-Capital-Collective/tcc-golf/pull/11")
-    # fill_pdf_via_image("./downloads/hard-pdf.pdf", data)
+        try:
+            await broadcast_log(f"Processing email from {email['sender']}")
+            email_content = f"""
+                        email body: {email['content']}
+                        email attachments: {email['attachments']}
+                        email sender: {email['sender']}
+                        email subject: {email['subject']}
+                        Based on the email above, do one of the following tasks:
+                        1. Download the attachment, fill out the pdf with appropriate function (if there's no fields use image-related functions), and open the edited version.
+                        2. Add the email as a dictionary to the todo list. Dictionary should have the following keys: subject, sender, snippet, due_date. Summarize the body.
+                        3. Schedule a meeting with the sender of the email if the email has timeslots instead of todo tasks.
+                        4. Review the pull-request and suggest any changes to make before merging. Write code suggestions to GitHub as a comment.
+                        """
+            # Redirect stdout to capture agent's output in real-time
+            with CapturingOutput(websocket=websocket) as output_buffer:
+                with redirect_stdout(output_buffer):
+                    # Run the agent and capture output in real-time
+                    agent.chat(email_content)
+        except Exception as e:
+            await websocket.send_text(f"Error processing email: {str(e)}")
+
