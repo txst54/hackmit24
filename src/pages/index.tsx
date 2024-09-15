@@ -18,15 +18,15 @@ export default function Home() {
           <div className="flex-1 flex items-center justify-center">
             {/* Overlay Content */}
             <div className={`text-center z-10 px-8`}>
-              <p className={`text-white text-4xl sm:text-8xl py-8 p-8 rounded-3xl ${border_b + border_l + border_r}`}>Cherubim</p>
+              <p className={`text-white text-4xl sm:text-8xl py-8 p-8 rounded-3xl ${border_b + border_l + border_r}`}>Scuba</p>
               <div className={`max-w-6xl flex flex-row justify-center mt-4 px-2 py-8 rounded-3xl ${border_t + border_l + border_r}`}>
                 <p
                     className={`bg-clip-text text-transparent bg-gradient-to-b from-neutral-200 to-neutral-500 text-base sm:text-2xl font-light`}>
-                  Partnering with elite companies, TCC{' '}
+                  Our proprietary artificial intelligence agents{' '}
                   <b className={`text-white`}>
-                    accelerates financial research
+                    proactively
                   </b>{' '}
-                  through algorithmic trading and comprehensive valuation
+                  handles your emails for you
                 </p>
               </div>
               <Link href="/login" className="loginButton border-white border text-white hover:bg-white hover:text-black text-xl rounded-xl px-6 py-2 mt-4">Sign in</Link>
