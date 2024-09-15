@@ -15,6 +15,7 @@ nlp = spacy.load("./en_core_web_sm-3.7.1/en_core_web_sm/en_core_web_sm-3.7.1")
 
 
 def prioritize_emails_to_todoist(emails: List[dict]) -> str:
+    print("EMAILSSSSSSSSSSSSSSSSS", emails)
     # Initialize Todoist client
     api = TodoistAPI(os.environ["TODOIST_API_TOKEN"])
 
@@ -40,6 +41,7 @@ def prioritize_emails_to_todoist(emails: List[dict]) -> str:
         # Create a task with the email content
         task_content = f"[{email['sender']['name']}] {subject}"
         task_description = f"From: {email['sender']['email']}\n\n{snippet}"
+        due_date = email["due_date"]
 
         # Map our priority to Todoist priority (4 is highest, 1 is lowest)
         todoist_priority = 4 if priority == "high" else 3 if priority == "medium" else 2
@@ -49,6 +51,7 @@ def prioritize_emails_to_todoist(emails: List[dict]) -> str:
             description=task_description,
             project_id=project.id,
             priority=todoist_priority,
+            due_date=due_date,
         )
 
     return f"https://todoist.com/app/project/{project.id}"
@@ -73,26 +76,3 @@ def determine_priority(sentiment: float, entities: List[str], content: str) -> s
 
     # Default to low priority
     return "low"
-
-
-# Example usage
-emails_json = [
-    {
-        "subject": "Urgent meeting tomorrow",
-        "snippet": "We have an important client meeting tomorrow at 10 AM. Please prepare the presentation.",
-        "sender": {"name": "John Doe", "email": "john@example.com"},
-    },
-    {
-        "subject": "Weekend plans",
-        "snippet": "Hey, what are your plans for the weekend? Want to grab lunch?",
-        "sender": {"name": "Jane Smith", "email": "jane@example.com"},
-    },
-]
-
-todoist_project_url = prioritize_emails_to_todoist(emails_json)
-print(f"Todoist project created: {todoist_project_url}")
-
-def prioritize(emails: List[dict]):
-    todoist_project_url = prioritize_emails_to_todoist(emails)
-    print(f"Todoist project created: {todoist_project_url}")
-

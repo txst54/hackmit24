@@ -4,7 +4,7 @@ from llama_index.llms.openai import OpenAI
 from llama_index.core.agent import ReActAgent
 from pdf2image import convert_from_path
 from pypdf import PdfReader, PdfWriter
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Annotated
 import subprocess
 from get_emails import run_email
 from email_priority import prioritize_emails_to_todoist
@@ -16,7 +16,7 @@ from controls.docvision import (
     match_boxes,
     place_answers_on_image,
 )
-from pydantic import FilePath, field_validator
+from pydantic import FilePath, field_validator, BeforeValidator
 from PIL import Image
 from pydantic import BaseModel
 
@@ -101,33 +101,7 @@ def add_todo(todo: str) -> str:
     return f"todo added to todos: {todo}"
 
 
-class PILImageField(Image.Image):
-    @classmethod
-    def __get_validators__(cls):
-        yield cls.validate
-
-    @classmethod
-    def validate(cls, v):
-        if not isinstance(v, Image.Image):
-            raise ValueError("Must be a PIL Image")
-        return v
-
-
-class ImageToPdfInput(BaseModel):
-    image_list: List[PILImageField]
-    output_pdf_path: FilePath
-
-    @field_validator("image_list")
-    def check_image_list_not_empty(cls, v):
-        if not v:
-            raise ValueError("The image list cannot be empty")
-        return v
-
-    class Config:
-        arbitrary_types_allowed = True
-
-
-def images_to_pdf(input_data: ImageToPdfInput) -> None:
+def images_to_pdf(input_data: List[Any]) -> None:
     """Convert an array of images into a pdf and writes it"""
     # Convert all images to RGB mode (PDF requires RGB mode)
     rgb_images = [img.convert("RGB") for img in input_data.image_list]
@@ -165,6 +139,7 @@ def get_fields_from_image(pdf_name: str) -> List[str]:
 
 def fill_pdf_via_image(pdf_name: str, data: Dict[str, str]) -> str:
     """Fills out a pdf composing of images with the given data in the form of a dictionary of field names and values"""
+    print("DATAAAAAAAAA", data)
     img_obj = load_pdf_to_image(pdf_name)
     images = img_obj["images"]
     fields = get_fields_from_image(pdf_name)
@@ -173,9 +148,17 @@ def fill_pdf_via_image(pdf_name: str, data: Dict[str, str]) -> str:
         bounding_boxes = get_bounding_boxes(page)
         prompts, coords = match_boxes(bounding_boxes, fields)
 
-        new_page = place_answers_on_image(page, [data[p] for p in prompts], coords)
+        answers = []
+        try:
+            for p in prompts:
+                answers.append(data[p])
+        except Exception:
+            continue
+
+        new_page = place_answers_on_image(page, answers, coords)
+
         page_list.append(new_page)
-    images_to_pdf(page_list, "./output.pdf")
+    images_to_pdf(page_list)
     return "success, written to output.pdf"
 
 
@@ -203,27 +186,54 @@ agent = ReActAgent.from_tools(
         fill_pdf_function,
         open_pdf_function,
         add_todo_function,
-        prioritize_emails_to_todoist_function,
+        images_to_pdf_function,
+        load_pdf_to_image_function,
+        get_fields_from_image_function,
+        fill_pdf_via_image_function,
     ],
     llm=llm,
     verbose=True,
 )
 
 if __name__ == "__main__":
-    emails = run_email()
-    # print([email["attachments"] for email in emails])
-    for email in emails:
-        agent.chat(
-            # "create a dictionary of fields and values based on pdf file called easy-pdf.pdf and given data. use that dictionary to fill out the pdf file"
-            # "fill out the pdf called easy-pdf.pdf and open the edited version. Be careful some forms have the year as 4 fields instead of 1. put each digit in each field."
-            f"""
-            email body: {email['content']}
-            email attachements: {email['attachments']}
-            email sender: {email['sender']}
-            email subject: {email['subject']}
-            Based on the email above, do one of the following tasks:
-            1. Download the attachemnt, fill out the pdf, and open the edited version.Be careful some forms have the year as 4 fields instead of 1. put each digit in each field.
-            2. Add the email as a dictionary to the todo list. keep original json structure.
-        """
-        )
-    print(todos)
+    # emails = run_email()
+    # # print([email["attachments"] for email in emails])
+    # for email in emails:
+    #     agent.chat(
+    #         # "create a dictionary of fields and values based on pdf file called easy-pdf.pdf and given data. use that dictionary to fill out the pdf file"
+    #         # "fill out the pdf called easy-pdf.pdf and open the edited version. Be careful some forms have the year as 4 fields instead of 1. put each digit in each field."
+    #         f"""
+    #         email body: {email['content']}
+    #         email attachements: {email['attachments']}
+    #         email sender: {email['sender']}
+    #         email subject: {email['subject']}
+    #         Based on the email above, do one of the following tasks:
+    #         1. Download the attachemnt, fill out the pdf with appropriate function (if there's not fields use image reltated functions), and open the edited version.Be careful some forms have the year as 4 fields instead of 1. put each digit in each field.
+    #         2. Add the email as a dictionary to the todo list. dictionary should have the following keys: subject, sender, snippet, due_date. include all the data from original email. summarize the body.
+    #     """
+    #     )
+    # prioritize_emails_to_todoist(todos)
+    data = {
+        "IDENTIFICATION NUMBER": "1HGCM82633A123456",
+        "YEAR MODEL": "2015",
+        "MAKE": "Toyota",
+        "LICENSE PLATE#/#": "ABC1234",
+        "MOTORCYCLE ENGINE#": "",
+        "PRINT SELLER'S NAME(S)": "John Doe",
+        "MD": "09",
+        "DAY": "14",
+        "YR": "2024",
+        "SELLING PRICE": "$15,000",
+        "GIFT VALUE": "",
+        "PRINT NAME": "John Doe",
+        "SIGNATURE": "John Doe",
+        "DATE": "09/14/2024",
+        "DL. or DEALER#": "D1234567",
+        "MAILING ADDRESS": "123 Main St",
+        "CITY": "San Francisco",
+        "STATE": "CA",
+        "ZIP": "94105",
+        "DAYTIME PHONE#": "(310) 555-1234",
+        "BUYER PRINT NAME": "Jane Smith",
+    }
+    fill_pdf_via_image("./downloads/hard-pdf.pdf", data)
