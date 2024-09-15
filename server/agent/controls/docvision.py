@@ -11,7 +11,7 @@ from google.cloud import vision
 import io
 
 config = dotenv_values(".env")
-client = OpenAI(api_key=config["OPENAI"])
+client = OpenAI(api_key=config["OPENAI_API_KEY"])
 
 
 def encode_images(images):
@@ -23,23 +23,16 @@ def encode_images(images):
         img_bytes = buffered.getvalue()
 
         # Encode bytes to base64
-        img_base64 = base64.b64encode(img_bytes).decode('utf-8')
+        img_base64 = base64.b64encode(img_bytes).decode("utf-8")
         base64_images.append(img_base64)
     return base64_images
 
 
 def create_content(base64_images, text):
-    content = [
-        {"type": "text", "text": text}
-    ]
+    content = [{"type": "text", "text": text}]
     for img in base64_images:
         content.append(
-            {
-                "type": "image_url",
-                "image_url": {
-                    "url": f"data:image/jpeg;base64,{img}"
-                }
-            }
+            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img}"}}
         )
     return content
 
@@ -47,24 +40,23 @@ def create_content(base64_images, text):
 def get_openai_response(content):
     response = client.chat.completions.create(
         model="gpt-4o",
-        messages=[
-            {
-                "role": "user",
-                "content": content
-            }
-        ],
+        messages=[{"role": "user", "content": content}],
         max_tokens=300,
     )
     return response.choices[0].message.content
 
 
-def place_answers_on_image(image: PIL.Image, answers: List[str], coordinates: List[List[Tuple[int]]]):
+def place_answers_on_image(
+    image: PIL.Image, answers: List[str], coordinates: List[List[Tuple[int]]]
+):
     # Open the image
     draw = ImageDraw.Draw(image)
     img_width, img_height = image.size
     # Load a font
     try:
-        font = ImageFont.truetype("./arial.ttf", 30)  # You may need to adjust the font path or size
+        font = ImageFont.truetype(
+            "./arial.ttf", 30
+        )  # You may need to adjust the font path or size
     except IOError:
         print("Error loading font...")
         font = ImageFont.load_default()
@@ -91,21 +83,25 @@ def match_boxes(boxes, fields):
             to_skip -= 1
             continue
         for field in fields:
-            if box['text'].description in field and not len(box['text'].description) == 1:
+            if (
+                box["text"].description in field
+                and not len(box["text"].description) == 1
+            ):
                 prompts.append(field)
-                coords.append(box['box'])
+                coords.append(box["box"])
                 to_skip = len(field.split(" "))
                 break
     return prompts, coords
 
 
 def get_bounding_boxes(image):
-    vision_client = vision.ImageAnnotatorClient(credentials=None,
-                                                client_options={"api_key": config["GCLOUD"]})
+    vision_client = vision.ImageAnnotatorClient(
+        credentials=None, client_options={"api_key": config["GCLOUD"]}
+    )
 
     # Convert the PIL image to a byte stream
     image_byte_array = io.BytesIO()
-    image.save(image_byte_array, format='JPEG')  # Ensure to use the right format
+    image.save(image_byte_array, format="JPEG")  # Ensure to use the right format
     image_byte_array = image_byte_array.getvalue()
     # Use Vision API to detect text
     image = vision.Image(content=image_byte_array)
@@ -116,6 +112,6 @@ def get_bounding_boxes(image):
     bounding_boxes = []
     for text in texts[1:]:
         box = [(vertex.x, vertex.y) for vertex in text.bounding_poly.vertices]
-        bounding_boxes.append({'text': text, 'box': box})
+        bounding_boxes.append({"text": text, "box": box})
 
     return bounding_boxes
