@@ -12,7 +12,7 @@ export default function Main() {
     const [activeBot, setActiveBot] = useState<string | null>(null)
     const [messages, setMessages] = useState<string[]>([]);
     useEffect(() => {
-        const socket = new WebSocket("ws://127.0.0.1:8000/logs");
+        const socket = new WebSocket("ws://127.0.0.1:8000/ws");
   
         socket.addEventListener("open", () => {
           console.log("Connected to WebSocket");

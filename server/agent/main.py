@@ -246,6 +246,7 @@ async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     clients.append(websocket)
     try:
+        await websocket.send_text("Worker 1 has started...")
         emails = run_email()
 
         # Start the email processing with WebSocket logging
