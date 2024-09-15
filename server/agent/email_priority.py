@@ -91,3 +91,8 @@ emails_json = [
 
 todoist_project_url = prioritize_emails_to_todoist(emails_json)
 print(f"Todoist project created: {todoist_project_url}")
+
+def prioritize(emails: List[dict]):
+    todoist_project_url = prioritize_emails_to_todoist(emails)
+    print(f"Todoist project created: {todoist_project_url}")
+
