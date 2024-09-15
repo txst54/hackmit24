@@ -85,11 +85,11 @@ def match_boxes(boxes, fields):
         for field in fields:
             if (
                 box["text"].description in field
-                and not len(box["text"].description) == 1
+                and not len(box["text"].description) <= 2
             ):
                 prompts.append(field)
                 coords.append(box["box"])
-                to_skip = len(field.split(" "))
+                # to_skip = max(len(field.split(" ")) - 1, 0)
                 break
     return prompts, coords
 

@@ -5,6 +5,7 @@ from llama_index.core.agent import ReActAgent
 from pdf2image import convert_from_path
 from pypdf import PdfReader, PdfWriter
 from typing import List, Dict, Any, Annotated
+import difflib
 import subprocess
 from get_emails import run_email
 from email_priority import prioritize_emails_to_todoist
@@ -101,14 +102,14 @@ def add_todo(todo: str) -> str:
     return f"todo added to todos: {todo}"
 
 
-def images_to_pdf(input_data: List[Any]) -> None:
+def images_to_pdf(input_data: List[Any], output_path: str) -> None:
     """Convert an array of images into a pdf and writes it"""
     # Convert all images to RGB mode (PDF requires RGB mode)
-    rgb_images = [img.convert("RGB") for img in input_data.image_list]
-
+    rgb_images = [img.convert("RGB") for img in input_data]
+    print(input_data)
     # Save the first image and append the rest as additional pages
     rgb_images[0].save(
-        input_data.output_pdf_path,
+        output_path,
         save_all=True,
         append_images=rgb_images[1:],
         resolution=100.0,
@@ -139,7 +140,7 @@ def get_fields_from_image(pdf_name: str) -> List[str]:
 
 def fill_pdf_via_image(pdf_name: str, data: Dict[str, str]) -> str:
     """Fills out a pdf composing of images with the given data in the form of a dictionary of field names and values"""
-    print("DATAAAAAAAAA", data)
+    print("Data: ", data)
     img_obj = load_pdf_to_image(pdf_name)
     images = img_obj["images"]
     fields = get_fields_from_image(pdf_name)
@@ -151,14 +152,22 @@ def fill_pdf_via_image(pdf_name: str, data: Dict[str, str]) -> str:
         answers = []
         try:
             for p in prompts:
-                answers.append(data[p])
+                matched = False
+                for data_key in data.keys():
+                    r = difflib.SequenceMatcher(None, p, data_key).ratio()
+                    if r >= 0.7:
+                        answers.append(data[data_key])
+                        matched = True
+                        break
+                if not matched:
+                    answers.append("")
         except Exception:
             continue
 
         new_page = place_answers_on_image(page, answers, coords)
-
+        print("Appending...")
         page_list.append(new_page)
-    images_to_pdf(page_list)
+    images_to_pdf(page_list, "output.pdf")
     return "success, written to output.pdf"
 
 
