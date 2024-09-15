@@ -1,1 +1,11 @@
-{"installed":{"client_id":"184601346379-ol1uf2gq5ptmjjn56h4bh5ptech1bme0.apps.googleusercontent.com","project_id":"tcc69420","auth_uri":"https://accounts.google.com/o/oauth2/auth","token_uri":"https://oauth2.googleapis.com/token","auth_provider_x509_cert_url":"https://www.googleapis.com/oauth2/v1/certs","client_secret":"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","redirect_uris":["http://localhost"]}}
+{
+  "installed": {
+    "client_id": "791786309557-phqh4uo83mdibp0d39pblajm2jgd325k.apps.googleusercontent.com",
+    "project_id": "hackmit2024-435620",
+    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+    "token_uri": "https://oauth2.googleapis.com/token",
+    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+    "client_secret": "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",
+    "redirect_uris": ["http://localhost"]
+  }
+}

@@ -15,6 +15,7 @@ nlp = spacy.load("./en_core_web_sm-3.7.1/en_core_web_sm/en_core_web_sm-3.7.1")
 
 
 def prioritize_emails_to_todoist(emails: List[dict]) -> str:
+
     print("EMAILSSSSSSSSSSSSSSSSS", emails)
     # Initialize Todoist client
     api = TodoistAPI(os.environ["TODOIST_API_TOKEN"])
