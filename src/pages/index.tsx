@@ -1,5 +1,6 @@
 import {Spotlight} from "@/components/ui/spotlight";
 import {Button} from "@/components/ui/button";
+import Link from "next/link";
 
 export default function Home() {
   const border_b = "border-b border-dashed border-zinc-700 ";
@@ -28,8 +29,7 @@ export default function Home() {
                   through algorithmic trading and comprehensive valuation
                 </p>
               </div>
-              <Button variant="secondary" className="text-lg">Login</Button>
-              {/*<Link href="/login" className="loginButton border-white border text-white text-xl rounded-xl px-6 py-2 mt-4">Join</Link>*/}
+              <Link href="/login" className="loginButton border-white border text-white hover:bg-white hover:text-black text-xl rounded-xl px-6 py-2 mt-4">Sign in</Link>
             </div>
           </div>
         </div>
