@@ -1,8 +1,10 @@
 import {Spotlight} from "@/components/ui/spotlight";
-import {Button} from "@/components/ui/button";
+// import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { useEffect } from "react";
 
 export default function Home() {
+
   const border_b = "border-b border-dashed border-zinc-700 ";
   const border_r = "border-r border-dashed border-zinc-700 ";
   const border_l = "border-l border-dashed border-zinc-700 ";
