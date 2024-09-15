@@ -1,3 +1,6 @@
+from typing import Dict, List, Any, Tuple
+
+import PIL
 from openai import OpenAI
 from dotenv import dotenv_values
 from pdf2image import convert_from_path
@@ -9,12 +12,6 @@ import io
 
 config = dotenv_values(".env")
 client = OpenAI(api_key=config["OPENAI"])
-
-
-def pdf_to_images(pdf_path):
-    # Convert PDF to images
-    images = convert_from_path(pdf_path)
-    return images
 
 
 def encode_images(images):
@@ -61,7 +58,7 @@ def get_openai_response(content):
     return response.choices[0].message.content
 
 
-def place_answers_on_image(image, answers, coordinates, output_path):
+def place_answers_on_image(image: PIL.Image, answers: List[str], coordinates: List[List[Tuple[int]]]):
     # Open the image
     draw = ImageDraw.Draw(image)
     img_width, img_height = image.size
@@ -82,7 +79,7 @@ def place_answers_on_image(image, answers, coordinates, output_path):
         draw.text((x, y), answer, fill="black", font=font)
 
     # Save the result
-    image.save(output_path)
+    return image
 
 
 def match_boxes(boxes, fields):
@@ -124,3 +121,50 @@ def get_bounding_boxes(image):
     return bounding_boxes
 
 
+def images_to_pdf(image_list: List[PIL.Image], output_pdf_path: str):
+    if not image_list:
+        raise ValueError("The image list cannot be empty")
+
+    # Convert all images to RGB mode (PDF requires RGB mode)
+    rgb_images = [img.convert('RGB') for img in image_list]
+
+    # Save the first image and append the rest as additional pages
+    rgb_images[0].save(
+        output_pdf_path,
+        save_all=True,
+        append_images=rgb_images[1:],
+        resolution=100.0,
+        quality=95,
+        optimize=True
+    )
+
+
+def load_pdf_to_image(pdf_name: str) -> Dict[str, Any]:
+    images = convert_from_path(pdf_name)
+    encoded_images = encode_images(images)
+
+    return {'images': images, 'encoded': encoded_images}
+
+
+def get_fields_from_image(pdf_name: str) -> List[str]:
+    img_obj = load_pdf_to_image(pdf_name)
+    content = create_content(img_obj['encoded'],
+                             "List all of the form field names as written on the document. Output it "
+                             "in a comma separated list. Don't bullet or enumerate.")
+    response = get_openai_response(content)
+    return response.split(", ")
+
+
+def fill_pdf_via_image(pdf_name: str, data: Dict[str, str]) -> str:
+    img_obj = load_pdf_to_image(pdf_name)
+    images = img_obj['images']
+    fields = get_fields_from_image(pdf_name)
+    page_list = []
+    for page in images:
+        bounding_boxes = get_bounding_boxes(page)
+        prompts, coords = match_boxes(bounding_boxes, fields)
+
+        new_page = place_answers_on_image(page, [data[p] for p in prompts], coords)
+        page_list.append(new_page)
+    images_to_pdf(page_list, "./output.pdf")
+    return "success, written to output.pdf"
