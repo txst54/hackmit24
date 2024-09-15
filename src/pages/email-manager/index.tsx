@@ -103,7 +103,8 @@ export default function Component() {
           className="w-96 bg-white p-6 rounded-lg shadow-lg"
         >
           <div className="flex items-center mb-4">
-            <img src={emails[currentEmail].logo} alt="Email logo" className="w-10 h-10 mr-3 rounded-full" />
+            {/*<img src={emails[currentEmail].logo} alt="Email logo" className="w-10 h-10 mr-3 rounded-full" />*/}
+            <div className="w-10 h-10 mr-3 rounded-full bg-black"></div>
             <div>
               <h2 className="text-xl font-semibold">{emails[currentEmail].subject}</h2>
               <p className="text-sm text-gray-600">{emails[currentEmail].sender} &lt;{emails[currentEmail].email}&gt;</p>
@@ -179,15 +180,15 @@ export default function Component() {
       {!showFormFilling && !showFlightCheckIn && (
         <div className="mt-8 flex justify-center space-x-8">
           <div className="flex flex-col items-center">
-            <Trash2 className="text-red-500" />
+            <Trash2 className="text-black" />
             <span className="text-sm mt-1">Trash</span>
           </div>
           <div className="flex flex-col items-center">
-            <Send className="text-green-500" />
+            <Send className="text-black" />
             <span className="text-sm mt-1">Send</span>
           </div>
           <div className="flex flex-col items-center">
-            <Clock className="text-blue-500" />
+            <Clock className="text-black" />
             <span className="text-sm mt-1">Later</span>
           </div>
         </div>
