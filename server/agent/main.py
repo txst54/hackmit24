@@ -5,9 +5,15 @@ from llama_index.core.agent import ReActAgent
 from pdf2image import convert_from_path
 from pypdf import PdfReader, PdfWriter
 from typing import List, Dict, Any, Annotated
+import difflib
 import subprocess
 from get_emails import run_email
 from email_priority import prioritize_emails_to_todoist
+from controls.codeagents import (
+    read_pull,
+    post_comment_to_pr,
+    find_commit_sha_by_code_segment
+)
 from controls.docvision import (
     encode_images,
     create_content,
@@ -101,14 +107,14 @@ def add_todo(todo: str) -> str:
     return f"todo added to todos: {todo}"
 
 
-def images_to_pdf(input_data: List[Any]) -> None:
+def images_to_pdf(input_data: List[Any], output_path: str) -> None:
     """Convert an array of images into a pdf and writes it"""
     # Convert all images to RGB mode (PDF requires RGB mode)
-    rgb_images = [img.convert("RGB") for img in input_data.image_list]
-
+    rgb_images = [img.convert("RGB") for img in input_data]
+    print(input_data)
     # Save the first image and append the rest as additional pages
     rgb_images[0].save(
-        input_data.output_pdf_path,
+        output_path,
         save_all=True,
         append_images=rgb_images[1:],
         resolution=100.0,
@@ -139,7 +145,7 @@ def get_fields_from_image(pdf_name: str) -> List[str]:
 
 def fill_pdf_via_image(pdf_name: str, data: Dict[str, str]) -> str:
     """Fills out a pdf composing of images with the given data in the form of a dictionary of field names and values"""
-    print("DATAAAAAAAAA", data)
+    print("Data: ", data)
     img_obj = load_pdf_to_image(pdf_name)
     images = img_obj["images"]
     fields = get_fields_from_image(pdf_name)
@@ -151,14 +157,22 @@ def fill_pdf_via_image(pdf_name: str, data: Dict[str, str]) -> str:
         answers = []
         try:
             for p in prompts:
-                answers.append(data[p])
+                matched = False
+                for data_key in data.keys():
+                    r = difflib.SequenceMatcher(None, p, data_key).ratio()
+                    if r >= 0.7:
+                        answers.append(data[data_key])
+                        matched = True
+                        break
+                if not matched:
+                    answers.append("")
         except Exception:
             continue
 
         new_page = place_answers_on_image(page, answers, coords)
-
+        print("Appending...")
         page_list.append(new_page)
-    images_to_pdf(page_list)
+    images_to_pdf(page_list, "output.pdf")
     return "success, written to output.pdf"
 
 
@@ -168,9 +182,11 @@ fill_pdf_function = FunctionTool.from_defaults(fn=fill_pdf)
 open_pdf_function = FunctionTool.from_defaults(fn=open_pdf)
 add_todo_function = FunctionTool.from_defaults(fn=add_todo)
 images_to_pdf_function = FunctionTool.from_defaults(fn=images_to_pdf)
-load_pdf_to_image_function = FunctionTool.from_defaults(fn=load_pdf_to_image)
 get_fields_from_image_function = FunctionTool.from_defaults(fn=get_fields_from_image)
 fill_pdf_via_image_function = FunctionTool.from_defaults(fn=fill_pdf_via_image)
+read_pull_function = FunctionTool.from_defaults(fn=read_pull)
+find_commit_sha_by_code_segment_function = FunctionTool.from_defaults(fn=find_commit_sha_by_code_segment)
+post_comment_to_pr_function = FunctionTool.from_defaults(fn=post_comment_to_pr)
 prioritize_emails_to_todoist_function = FunctionTool.from_defaults(
     fn=prioritize_emails_to_todoist
 )
@@ -187,31 +203,34 @@ agent = ReActAgent.from_tools(
         open_pdf_function,
         add_todo_function,
         images_to_pdf_function,
-        load_pdf_to_image_function,
         get_fields_from_image_function,
         fill_pdf_via_image_function,
+        read_pull_function,
+        post_comment_to_pr_function,
+        find_commit_sha_by_code_segment_function
     ],
     llm=llm,
     verbose=True,
 )
 
 if __name__ == "__main__":
-    # emails = run_email()
-    # # print([email["attachments"] for email in emails])
-    # for email in emails:
-    #     agent.chat(
-    #         # "create a dictionary of fields and values based on pdf file called easy-pdf.pdf and given data. use that dictionary to fill out the pdf file"
-    #         # "fill out the pdf called easy-pdf.pdf and open the edited version. Be careful some forms have the year as 4 fields instead of 1. put each digit in each field."
-    #         f"""
-    #         email body: {email['content']}
-    #         email attachements: {email['attachments']}
-    #         email sender: {email['sender']}
-    #         email subject: {email['subject']}
-    #         Based on the email above, do one of the following tasks:
-    #         1. Download the attachemnt, fill out the pdf with appropriate function (if there's not fields use image reltated functions), and open the edited version.Be careful some forms have the year as 4 fields instead of 1. put each digit in each field.
-    #         2. Add the email as a dictionary to the todo list. dictionary should have the following keys: subject, sender, snippet, due_date. include all the data from original email. summarize the body.
-    #     """
-    #     )
+    emails = run_email()
+    # print([email["attachments"] for email in emails])
+    for email in emails:
+        agent.chat(
+            # "create a dictionary of fields and values based on pdf file called easy-pdf.pdf and given data. use that dictionary to fill out the pdf file"
+            # "fill out the pdf called easy-pdf.pdf and open the edited version. Be careful some forms have the year as 4 fields instead of 1. put each digit in each field."
+            f"""
+            email body: {email['content']}
+            email attachements: {email['attachments']}
+            email sender: {email['sender']}
+            email subject: {email['subject']}
+            Based on the email above, do one of the following tasks:
+            1. Download the attachment, fill out the pdf with appropriate function (if there's not fields use image reltated functions), and open the edited version.Be careful some forms have the year as 4 fields instead of 1. put each digit in each field.
+            2. Add the email as a dictionary to the todo list. dictionary should have the following keys: subject, sender, snippet, due_date. include all the data from original email. summarize the body.
+            3. Review the pull-request and suggest any changes to make before merging. Write code suggestions to github as a comment.
+        """
+        )
     # prioritize_emails_to_todoist(todos)
     data = {
         "IDENTIFICATION NUMBER": "1HGCM82633A123456",
@@ -236,4 +255,7 @@ if __name__ == "__main__":
         "DAYTIME PHONE#": "(310) 555-1234",
         "BUYER PRINT NAME": "Jane Smith",
     }
-    fill_pdf_via_image("./downloads/hard-pdf.pdf", data)
+    # find_commit_sha_by_code_segment("Texas-Capital-Collective", "tcc-golf", "11", "-    <div class=\"w-10/12 lg:pb-16\">")
+    # post_comment_to_pr("https://github.com/Texas-Capital-Collective/tcc-golf/pull/11", "Testing new TCC Dev Tool :)")
+    # read_pull("https://github.com/Texas-Capital-Collective/tcc-golf/pull/11")
+    # fill_pdf_via_image("./downloads/hard-pdf.pdf", data)
