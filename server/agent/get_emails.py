@@ -89,10 +89,10 @@ def get_email_content(service, user_id, msg_id):
 
 
 def run_email():
-    service = google_auth()
+    gmail_service, _ = google_auth()
     user_id = "me"
 
-    labels = service.users().labels().list(userId=user_id).execute()
+    labels = gmail_service.users().labels().list(userId=user_id).execute()
     label_id = next(
         (label["id"] for label in labels["labels"] if label["name"] == "interaction"),
         None,
@@ -103,7 +103,10 @@ def run_email():
         return []
 
     results = (
-        service.users().messages().list(userId=user_id, labelIds=[label_id]).execute()
+        gmail_service.users()
+        .messages()
+        .list(userId=user_id, labelIds=[label_id])
+        .execute()
     )
     messages = results.get("messages", [])
 
@@ -113,7 +116,7 @@ def run_email():
         print("Messages:")
         data = []
         for message in messages:
-            email_data = get_email_content(service, user_id, message["id"])
+            email_data = get_email_content(gmail_service, user_id, message["id"])
             if email_data:
                 data.append(email_data)
     return data
